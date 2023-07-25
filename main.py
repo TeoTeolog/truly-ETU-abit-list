@@ -103,7 +103,7 @@ def app():
                 student = competition_list[i]
                 if student_code == student["code"] and student["priority"] == priority:
                     student_was_found = True
-                    if competition_object["total_num"] >= i + 1:
+                    if competition_object["total_num"] * 0.8 >= i + 1:
                         return {
                             "student_code": student_code,
                             "competition_code": competition_object["competition_code"],
@@ -129,7 +129,7 @@ def app():
                     successful_admission
                     and successful_admission["competition_code"]
                     != competition_object["competition_code"]
-                    or i + 1 >= competition_object["total_num"]
+                    or i + 1 >= competition_object["total_num"] * 0.8
                 ):
                     competition_list.remove(student)
                 else:
