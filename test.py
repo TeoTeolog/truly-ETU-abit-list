@@ -1,5 +1,5 @@
 import json
-import requests 
+import requests
 from datetime import datetime
 import time
 
@@ -12,21 +12,23 @@ import time
 
 #         if last != "" and data["data"]["generated_at"] != last:
 #             print(">>>>>>>>>>>>>>>>>>>>it's updating \nprev:", last,"\ncur:", data["data"]["generated_at"])
-#             break 
+#             break
 #         else:
 #             print('[',datetime.now().strftime("%H:%M:%S"),']', data["data"]["generated_at"])
 #             last = data["data"]["generated_at"]
-            
+
 #         time.sleep(30)
 
 import csv
 
+
 def app():
-    with open('eggs.csv', 'w', newline='') as csvfile:
-        spamwriter = csv.writer(csvfile, delimiter=' ',
-                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        spamwriter.writerow(['Spam'] * 5 + ['Baked Beans'])
-        spamwriter.writerow(['Spam', 'Lovely Spam', 'Wonderful Spam'])
+    with open("eggs.csv", "w", newline="") as csvfile:
+        spamwriter = csv.writer(
+            csvfile, delimiter=" ", quotechar="|", quoting=csv.QUOTE_MINIMAL
+        )
+        spamwriter.writerow(["Spam"] * 5 + ["Baked Beans"])
+        spamwriter.writerow(["Spam", "Lovely Spam", "Wonderful Spam"])
 
 
 app()
