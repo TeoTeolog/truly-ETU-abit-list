@@ -43,8 +43,23 @@ import csv
 #         spamwriter.writerow(["Spam", "Lovely Spam", "Wonderful Spam"])
 
 
+class A:
+    def do(self):
+        print("Do")
+
+
+class B:
+    def test(self, a):
+        a()
+
+
 def app():
-    return 1
+    # test = {"jopa": 1, "jupa": 2, "koga": 99}
+    b = B()
+    a = A()
+    b.test(a.do)
+    # for value, key in enumerate(test):
+    #     print(value, key)
 
 
 app()

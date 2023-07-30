@@ -2,79 +2,190 @@ import json
 import requests
 from datetime import datetime
 import csv
-from copy import deepcopy
+
+# from copy import deepcopy
 import os
 
 # 1 - бюджет, 2 - контракт
 FIN_MODE = 1
 
 
-class Student:
+class Student_record:
     def __init__(
-        self, code, priority, has_original, enroll_condition, total_points, place
+        self,
+        priority,
+        has_original,
+        total_points,
+        place,
     ):
-        self.code = code
-        self.priority = priority
+        self.priority = int(priority)
         self.has_original = has_original
-        self.enroll_condition = enroll_condition
         self.total_points = total_points
         self.place = place
 
     def __str__(self):
         return [self.code, self.priority, self.total_points, self.place]
 
-    def print(self):
-        print([self.code, self.priority, self.total_points, self.place])
+
+class Student:
+    def __init__(self, code):
+        self.code = code
+        self.records: {str: Student_record} = []
+
+    def __str__(self):
+        return [self.code, self.priority, self.total_points, self.place]
+
+    def add_record(self, competition, priority, has_original, total_points, place):
+        self.records[competition.code] = Student_record(
+            competition, priority, has_original, total_points, place
+        )
+
+    def get_record_by_competition(self, competition_code) -> Student_record:
+        return self.records[str(competition_code)]
+
+    def get_all_record(self) -> Student_record:
+        return [item for item in self.records]
+
+    def get_records_ordered_by_priority(self) -> [Student_record]:
+        result: [Student_record] = []
+        for record in self.records:
+            result[record.priority - 1] = record
+        return result
+
+    def remove_record(self, record):
+        self.records.remove(record)
 
 
-class Competition:
-    def __init__(self, code, uuid):
-        self.competition_code = code
-        self.uuid = uuid
-        self.competition_name = ""
-        self.students_list = []
+class All_Student_Table:
+    def __init__(self):
+        self.students_list: [Student] = []
         self.total_num = 0
 
     def __str__(self):
-        return [self.competition_code, self.competition_name, self.total_num]
+        return [self.students_list]
 
-    def add_students_data(self, students_list):
-        for i in range(len(students_list)):
-            student = students_list[i]
-            self.add_student(
-                [
-                    student["code"],
-                    student["priority"],
-                    student["has_original"],
-                    student["enroll_condition"],
-                    student["total_points"],
-                    i + 1,
-                ]
-            )
+    def update_or_add_student(self, student_data) -> Student:
+        student: Student = None
+        for student_item in self.students_list:
+            if student_item == student_data["code"]:
+                student = student_item
+                break
+        if not student:
+            student = Student(student_data["code"])
+            self.students_list.append(student)
 
-    def add_student(self, student):
-        self.students_list.append(Student(*student))
+        student.add_record(
+            student_data["competition_code"],
+            student_data["priority"],
+            student_data["has_original"],
+            student_data["total_points"],
+            student_data["place"],
+        )
+        return student
 
-    def add_data(self, data):
-        self.add_students_data(data["list"])
+
+class Table:
+    def __init__(self, code, uuid):
+        self.code = code
+        self.uuid = uuid
+        self.competition_name = ""
+        self.students_list: [Student] = []
+        self.total_num = 0
+
+    def __str__(self):
+        return [self.code, self.competition_name, self.total_num]
+
+    def __add_student(self, student):
+        self.students_list.append(student)
+
+    def add_students_data(self, students_list, data_transformer: callable):
+        for index, student_data in enumerate(students_list):
+            student_data["competition_code"] = self.code
+            student_data["place"] = index + 1
+            self.__add_student(data_transformer(student_data))
+
+    def add_data(self, data, data_transformer: callable):
         self.total_num = data["competition"]["total_num"]
         self.competition_name = data["competition"]["name"]
-
-    def print(self):
-        print([self.competition_code, self.competition_name, self.total_num])
-
-    def find_student(self, student_code):
-        for student in self.students_list:
-            if student.code == student_code:
-                return student
-        return None
+        self.add_students_data(data["list"], data_transformer)
 
 
-class App:
+class All_tables:
     def __init__(self):
-        self.competition_list = []
+        self.tables: [Table] = []
 
-    def __filter_nested_objects(self, external_list):
+    def __init__(self, tables: [Table]):
+        self.tables = tables
+
+    def set_tables(self, tables):
+        self.tables = tables
+
+    def get_competition_by_code(self, code):
+        for table in self.tables:
+            if table.code == code:
+                return table
+
+
+class Data_source:
+    def __init__(self):
+        self.data
+
+    def get_all_tables(self) -> (All_Student_Table, [Table]):
+        pass
+
+    # def get_data(self, student_table: All_Student_Table, tables: All_tables):
+    #     student_data, competition_data = self.get_all_tables()
+    #     tables.set_tables(competition_data)
+    #     student_table = student_data
+
+
+class File_source(Data_source):
+    def __get_file_name_from_dir(self, dir_path="") -> str:
+        content = os.listdir(dir_path)
+        for index, name in enumerate(content, start=1):
+            print(index, name)
+        print("Enter num of file or full name (with extenshion):")
+        choice = input()
+        if choice in content:
+            return content
+        elif int(choice) > 0 and int(choice) <= len(content):
+            return content[int(choice) - 1]
+
+    def get_all_tables(self) -> (All_Student_Table, [Table]):
+        competition_list = []
+        all_students_table = All_Student_Table()
+        with open(self.__get_file_name_from_dir(os.getcwd()), "r") as csvfile:
+            reader = csv.reader(csvfile)
+            last_code = ""
+            cur_competition = None
+            for row in reader:
+                if row[0] == "competition_code":
+                    continue
+                if last_code != row[0]:
+                    if cur_competition and cur_competition.code:
+                        competition_list.append(cur_competition)
+                    cur_competition = Table(row[0], "none")
+                    cur_competition.total_num = int(row[2])
+                    cur_competition.competition_name = row[1]
+
+                student_data = {}
+                student_data["competition_code"] = row[4]
+                student_data["priority"] = row[5]
+                student_data["has_original"] = row[6]
+                student_data["total_points"] = float(row[7])
+                student_data["place"] = row[3]
+
+                cur_competition.add_student(
+                    all_students_table.update_or_add_student(student_data)
+                )
+                last_code = row[0]
+            if cur_competition and cur_competition.code:
+                competition_list.append(cur_competition)
+        return (all_students_table, competition_list)
+
+
+class Remote_source(Data_source):
+    def __filter_nested_objects(self, external_list) -> [Table]:
         result_list = []
         for external_obj in external_list:
             code = external_obj["code"]
@@ -86,17 +197,39 @@ class App:
                     ):
                         uuid = nested_obj.get("uuid")
                         if uuid is not None and isinstance(uuid, str):
-                            filtered_obj = Competition(code, nested_obj["uuid"])
+                            filtered_obj = Table(code, nested_obj["uuid"])
                             result_list.append(filtered_obj)
         return result_list
 
-    def __request_students_from_competition(self, competition):
+    def __request_students_from_competition(self, all_students_table, competition):
         response = requests.get(
             "https://lists.priem.etu.ru/public/list/" + competition.uuid
         )
         data = json.loads(response.text)["data"]
 
-        competition.add_data(data)
+        competition.add_data(data, all_students_table.update_or_add_student)
+
+    def get_all_tables(self) -> (All_Student_Table, [Table]):
+        response = requests.get("https://lists.priem.etu.ru/public/competitions/2/1")
+        data = json.loads(response.text)["data"]
+
+        competition_list = self.__filter_nested_objects(data["competition_groups"])
+        all_student_table = All_Student_Table()
+
+        loading_leng = len(competition_list)
+        loading_cur = 0
+
+        for competition in competition_list:
+            self.__request_students_from_competition(all_student_table, competition)
+            loading_cur += 1
+            print(loading_cur, "/", loading_leng)
+        return (all_student_table, competition_list)
+
+
+class App:
+    def __init__(self):
+        self.competition_list = All_tables()
+        self.all_students_list: [Student] = []
 
     def __export_to_csv(self, data_list, output_file):
         with open(output_file, "w", newline="") as csvfile:
@@ -116,7 +249,7 @@ class App:
             for obj in data_list:
                 total_num = obj.total_num
                 competition_name = obj.competition_name
-                competition_code = obj.competition_code
+                competition_code = obj.code
                 i = 0
                 for i in range(len(obj.students_list)):
                     item = obj.students_list[i]
@@ -134,43 +267,24 @@ class App:
                         }
                     )
 
-    def __find_student(self, all_rate_list, student_code, priority):
-        student_was_found = False
-        for competition_object in all_rate_list:
-            student: Student = competition_object.find_student(student_code)
-            if student and student.priority == priority:
-                student_was_found = True
-                if competition_object.total_num * 0.8 >= student.place:
-                    return {
-                        "student_code": student_code,
-                        "competition_code": competition_object.competition_code,
-                        "priority": priority,
-                        "place": student.place,
-                    }
-        if student_was_found:
-            return self.__find_student(all_rate_list, student_code, priority + 1)
+    # def equip_rules(self) -> bool:
+    #     return record.place < self.competition_list.get_competition_by_code(record.)
+
+    def __find_successful_admission(self, rules, student: Student) -> Table:
+        for record in student.get_records_ordered_by_priority():
+            if rules(record):
+                return record.competition
         return None
 
-    def __table_cleanup(self, all_rate_list):
-        new_rate_list = deepcopy(all_rate_list)
-        for competition_object in new_rate_list:
-            competition_list = competition_object.students_list
-            i = 0
-            while i < len(competition_list):
-                student = competition_list[i]
-                successful_admission = self.__find_student(
-                    new_rate_list, student.code, 1
-                )
-                if (
-                    successful_admission
-                    and successful_admission["competition_code"]
-                    != competition_object.competition_code
-                    or i + 1 >= competition_object.total_num * 0.8
-                ):
-                    competition_list.remove(student)
-                else:
-                    i += 1
-        return new_rate_list
+    def clear_all_table(self):
+        for table in self.competition_list:
+            result = []
+            for index, student in enumerate(table):
+                if self.__find_successful_admission(self.equip_rules, student) == table:
+                    result.append(student)
+                if index > table.total_num:
+                    break
+            table = result
 
     def __estimate_min_score(self, all_rate_list):
         res = []
@@ -180,11 +294,12 @@ class App:
                     competition_object.students_list[
                         len(competition_object.students_list) - 1
                     ].total_points,
-                    competition_object.competition_code,
+                    competition_object.code,
                 ]
             )
         return res
 
+    # rewrite
     def user_search_loop(self):
         choice = 1
         while choice != 0:
@@ -205,58 +320,14 @@ class App:
         ):
             print(estimate_score_item[1], ":", estimate_score_item[0])
 
-    def parce_from_file(self, input_file):
-        self.competition_list = []
-        with open(input_file, "r") as csvfile:
-            reader = csv.reader(csvfile)
-            last_code = ""
-            cur_competition = None
-            for row in reader:
-                if row[0] == "competition_code":
-                    continue
-                if last_code != row[0]:
-                    if cur_competition and cur_competition.competition_code:
-                        self.competition_list.append(cur_competition)
-                    cur_competition = Competition(row[0], "none")
-                    cur_competition.total_num = int(row[2])
-                    cur_competition.competition_name = row[1]
-                cur_competition.add_student(
-                    [row[4], row[5], row[6], "None", float(row[7]), row[3]]
-                )
-                last_code = row[0]
-            if cur_competition and cur_competition.competition_code:
-                self.competition_list.append(cur_competition)
-
-    def parce_dir(self, dir_path=""):
-        content = os.listdir(dir_path)
-        for index, name in enumerate(content, start=1):
-            print(index, name)
-        print("Enter num of file or full name (with extenshion):")
-        choice = input()
-        if choice in content:
-            self.parce_from_file(content)
-        elif int(choice) > 0 and int(choice) <= len(content):
-            self.parce_from_file(content[int(choice) - 1])
-
     def save_to_file(self):
         self.__export_to_csv(
             self.__table_cleanup(self.competition_list),
             "res_scan_" + datetime.now().strftime("%m-%d-%Y-%H:%M") + "_.csv",
         )
 
-    def parce_from_remote(self):
-        response = requests.get("https://lists.priem.etu.ru/public/competitions/2/1")
-        data = json.loads(response.text)["data"]
-
-        self.competition_list = self.__filter_nested_objects(data["competition_groups"])
-
-        loading_leng = len(self.competition_list)
-        loading_cur = 0
-
-        for competition in self.competition_list:
-            self.__request_students_from_competition(competition)
-            loading_cur += 1
-            print(loading_cur, "/", loading_leng)
+    def get_source(self, data_source: Data_source):
+        self.tables = data_source.get_all_tables()
 
 
 if __name__ == "__main__":
