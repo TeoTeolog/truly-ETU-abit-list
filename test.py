@@ -43,6 +43,29 @@ import csv
 #         spamwriter.writerow(["Spam", "Lovely Spam", "Wonderful Spam"])
 
 
+data_example = {
+    "code": str,
+    "name": str,
+    "total_num": int,
+    "list": [
+        {
+            "student_code": str,
+            "priority": str,
+            "has_original": str,
+            "total_points": float,
+            "place": int,
+        },
+        {
+            "student_code": str,
+            "priority": str,
+            "has_original": str,
+            "total_points": float,
+            "place": int,
+        },
+    ],
+}
+
+
 class A:
     def do(self):
         print("Do")
